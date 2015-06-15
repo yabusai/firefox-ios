@@ -54,6 +54,13 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // Force a database upgrade by requesting a non-existent password
         profile.logins.getLoginsForProtectionSpace(NSURLProtectionSpace(host: "example.com", port: 0, `protocol`: nil, realm: nil, authenticationMethod: nil))
 
+        // check to see if we started cos someone tapped on a notification
+        if let localNotification = launchOptions?[UIApplicationLaunchOptionsLocalNotificationKey] as? UILocalNotification {
+            if let alertURL = localNotification.alertBody {
+                browserViewController.openURLInNewTab(NSURL(string: alertURL)!)
+            }
+        }
+
         return true
     }
 
@@ -134,6 +141,13 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         NSUserDefaults.standardUserDefaults().registerDefaults(["UserAgent": firefoxUA!])
 
         SDWebImageDownloader.sharedDownloader().setValue(firefoxUA, forHTTPHeaderField: "User-Agent")
+    }
+
+    func application(application: UIApplication, didReceiveLocalNotification notification: UILocalNotification) {
+        if let alertURL = notification.userInfo?[TabSyncURLKey] as? String{
+            browserViewController.openURLInNewTab(NSURL(string: alertURL)!)
+        }
+
     }
 }
 

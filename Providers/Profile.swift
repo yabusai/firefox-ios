@@ -60,40 +60,37 @@ class CommandDiscardingSyncDelegate: SyncDelegate {
  * This will also likely be the extension point for wipes, resets, and
  * getting access to data sources during a sync.
  */
+
+let TabSyncURLKey = "TabSyncURL"
 class BrowserProfileSyncDelegate: SyncDelegate {
     let app: UIApplication
 
     init(app: UIApplication) {
         self.app = app
+
+        app.registerUserNotificationSettings(UIUserNotificationSettings(forTypes: UIUserNotificationType.Alert, categories: nil))
+        app.registerForRemoteNotifications()
     }
 
     // SyncDelegate
     func displaySentTabForURL(URL: NSURL, title: String) {
         log.info("Displaying notification for URL \(URL.absoluteString)")
 
-        app.registerUserNotificationSettings(UIUserNotificationSettings(forTypes: UIUserNotificationType.Alert, categories: nil))
-        app.registerForRemoteNotifications()
+        let currentSettings = app.currentUserNotificationSettings()
+        if currentSettings.types.rawValue & UIUserNotificationType.Alert.rawValue != 0 {
+            // TODO: localize.
+            let notification = UILocalNotification()
 
-        // TODO: localize.
-        let notification = UILocalNotification()
+            notification.fireDate = NSDate()
+            notification.timeZone = NSTimeZone.defaultTimeZone()
+            notification.alertBody = String(format: NSLocalizedString("New tab: %@: %@", comment:"New tab [title] [url]"), title, URL.absoluteString!)
+            notification.userInfo = [TabSyncURLKey: URL.absoluteString!]
+            notification.alertAction = nil
 
-        /* actions
-        notification.identifier = "tab-" + Bytes.generateGUID()
-        notification.activationMode = UIUserNotificationActivationMode.Foreground
-        notification.destructive = false
-        notification.authenticationRequired = true
-        */
-
-        notification.alertTitle = "New tab: \(title)"
-        notification.alertBody = URL.absoluteString!
-        notification.alertAction = nil
-
-        // TODO: categories
-        // TODO: put the URL into the alert userInfo.
-        // TODO: application:didFinishLaunchingWithOptions:
-        // TODO:
-        // TODO: set additionalActions to bookmark or add to reading list.
-        self.app.presentLocalNotificationNow(notification)
+            // TODO:
+            // TODO: set additionalActions to bookmark or add to reading list.
+            app.presentLocalNotificationNow(notification)
+        }
     }
 }
 
@@ -336,7 +333,7 @@ public class BrowserProfile: Profile {
                 return
             }
 
-            let interval = FifteenMinutes
+            let interval = OneMinute//FifteenMinutes
             let selector = Selector("syncHistoryOnTimer")
             log.debug("Starting history sync timer.")
             self.historySyncTimer = repeatingTimerAtInterval(interval, selector: selector)

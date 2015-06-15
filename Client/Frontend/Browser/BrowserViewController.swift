@@ -559,6 +559,19 @@ class BrowserViewController: UIViewController {
             })
         }
     }
+
+    func openURLInNewTab(url: NSURL) {
+        log.info("Opening URL \(url) in new tab")
+
+        let tab = tabManager.addTab()
+        if let nav = tab.loadRequest(NSURLRequest(URL: url)) {
+            self.recordNavigationInTab(tab, navigation: nav, visitType: VisitType.Typed)
+            tabManager.selectTab(tab)
+        }
+        else {
+            tabManager.removeTab(tab)
+        }
+    }
 }
 
 /**
