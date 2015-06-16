@@ -61,15 +61,22 @@ class CommandDiscardingSyncDelegate: SyncDelegate {
  * getting access to data sources during a sync.
  */
 
-let TabSyncURLKey = "TabSyncURL"
+let TabSendURLKey = "TabSendURL"
+let TabSendTitleKey = "TabSendTitle"
+let TabSendCategory = "TabSendCategory"
+
+enum SentTabAction: String {
+    case View = "TabSendViewAction"
+    case Bookmark = "TabSendBookmarkAction"
+    case ReadingList = "TabSendReadingListAction"
+}
+
 class BrowserProfileSyncDelegate: SyncDelegate {
     let app: UIApplication
 
     init(app: UIApplication) {
         self.app = app
-
-        app.registerUserNotificationSettings(UIUserNotificationSettings(forTypes: UIUserNotificationType.Alert, categories: nil))
-        app.registerForRemoteNotifications()
+        registerForNotifications()
     }
 
     // SyncDelegate
@@ -84,13 +91,45 @@ class BrowserProfileSyncDelegate: SyncDelegate {
             notification.fireDate = NSDate()
             notification.timeZone = NSTimeZone.defaultTimeZone()
             notification.alertBody = String(format: NSLocalizedString("New tab: %@: %@", comment:"New tab [title] [url]"), title, URL.absoluteString!)
-            notification.userInfo = [TabSyncURLKey: URL.absoluteString!]
+            notification.userInfo = [TabSendURLKey: URL.absoluteString!, TabSendTitleKey: title]
             notification.alertAction = nil
+            notification.category = TabSendCategory
 
-            // TODO:
-            // TODO: set additionalActions to bookmark or add to reading list.
             app.presentLocalNotificationNow(notification)
         }
+    }
+
+
+    func registerForNotifications() {
+        let viewAction = UIMutableUserNotificationAction()
+        viewAction.identifier = SentTabAction.View.rawValue
+        viewAction.title = NSLocalizedString("View", comment: "View a URL")
+        viewAction.activationMode = UIUserNotificationActivationMode.Foreground
+        viewAction.destructive = false
+        viewAction.authenticationRequired = false
+
+        let bookmarkAction = UIMutableUserNotificationAction()
+        bookmarkAction.identifier = SentTabAction.Bookmark.rawValue
+        bookmarkAction.title = NSLocalizedString("Bookmark", comment: "Bookmark a URL")
+        bookmarkAction.activationMode = UIUserNotificationActivationMode.Foreground
+        bookmarkAction.destructive = false
+        bookmarkAction.authenticationRequired = false
+
+        let readingListAction = UIMutableUserNotificationAction()
+        readingListAction.identifier = SentTabAction.ReadingList.rawValue
+        readingListAction.title = NSLocalizedString("Add to Reading List", comment: "Add URL to the reading list")
+        readingListAction.activationMode = UIUserNotificationActivationMode.Foreground
+        readingListAction.destructive = false
+        readingListAction.authenticationRequired = false
+
+        let sentTabsCategory = UIMutableUserNotificationCategory()
+        sentTabsCategory.identifier = TabSendCategory
+        sentTabsCategory.setActions([readingListAction, bookmarkAction, viewAction], forContext: UIUserNotificationActionContext.Default)
+
+        sentTabsCategory.setActions([readingListAction, viewAction], forContext: UIUserNotificationActionContext.Minimal)
+
+        app.registerUserNotificationSettings(UIUserNotificationSettings(forTypes: UIUserNotificationType.Alert, categories: [sentTabsCategory]))
+        app.registerForRemoteNotifications()
     }
 }
 
@@ -333,7 +372,7 @@ public class BrowserProfile: Profile {
                 return
             }
 
-            let interval = OneMinute//FifteenMinutes
+            let interval = FifteenMinutes
             let selector = Selector("syncHistoryOnTimer")
             log.debug("Starting history sync timer.")
             self.historySyncTimer = repeatingTimerAtInterval(interval, selector: selector)

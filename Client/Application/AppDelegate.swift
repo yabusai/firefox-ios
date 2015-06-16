@@ -143,11 +143,50 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         SDWebImageDownloader.sharedDownloader().setValue(firefoxUA, forHTTPHeaderField: "User-Agent")
     }
 
+    func application(application: UIApplication, handleActionWithIdentifier identifier: String?, forLocalNotification notification: UILocalNotification, completionHandler: () -> Void) {
+        if let actionId = identifier {
+            if let action = SentTabAction(rawValue: actionId) {
+                switch(action) {
+                case .View:
+                    viewURLInNewTab(notification)
+                    break
+                case .Bookmark:
+                    addBookmark(notification)
+                    break
+                case .ReadingList:
+                    addToReadingList(notification)
+                    break
+                }
+            } else {
+                println("ERROR: Unknown notification action received")
+            }
+        } else {
+            println("ERROR: Unknown notification received")
+        }
+    }
+
     func application(application: UIApplication, didReceiveLocalNotification notification: UILocalNotification) {
-        if let alertURL = notification.userInfo?[TabSyncURLKey] as? String{
+        viewURLInNewTab(notification)
+    }
+
+    private func viewURLInNewTab(notification: UILocalNotification) {
+        if let alertURL = notification.userInfo?[TabSendURLKey] as? String{
             browserViewController.openURLInNewTab(NSURL(string: alertURL)!)
         }
+    }
 
+    private func addBookmark(notification: UILocalNotification) {
+        if let alertURL = notification.userInfo?[TabSendURLKey] as? String,
+            let title = notification.userInfo?[TabSendTitleKey] as? String {
+                browserViewController.addBookmark(alertURL, title: title)
+        }
+    }
+
+    private func addToReadingList(notification: UILocalNotification) {
+        if let alertURL = notification.userInfo?[TabSendURLKey] as? String,
+            let title = notification.userInfo?[TabSendTitleKey] as? String {
+                NSNotificationCenter.defaultCenter().postNotificationName(FSReadingListAddReadingListItemNotification, object: self, userInfo: ["URL": NSURL(string: alertURL)!, "Title": title])
+        }
     }
 }
 
